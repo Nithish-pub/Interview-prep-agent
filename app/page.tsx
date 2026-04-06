@@ -3,20 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { InterviewMode } from "@/lib/interview/types";
-import { connectOpenAIRealtimeVoice } from "@/lib/realtime-webrtc-client";
+import {
+  connectOpenAIRealtimeVoice,
+  RealtimeEvent
+} from "@/lib/realtime-webrtc-client";
 
-const INTERVIEW_MODES: InterviewMode[] = [
-  "behavioral",
-  "technical",
-  "mixed"
-];
+const INTERVIEW_MODES: InterviewMode[] = ["behavioral", "technical", "mixed"];
+
+interface Question {
+  id: string;
+  competency: string;
+  prompt: string;
+}
 
 interface StartResponse {
   interviewId: string;
   plan: {
     summary: string;
     competencies: string[];
-    questions: Array<{ id: string; competency: string; prompt: string }>;
+    questions: Question[];
   };
   realtime: {
     clientSecret: string;
@@ -30,24 +35,6 @@ interface StartResponse {
   };
 }
 
-interface DecisionResponse {
-  question: {
-    id: string;
-    competency: string;
-    prompt: string;
-  };
-  decision: {
-    action: string;
-    prompt: string;
-    evaluation: {
-      answerQuality: string;
-      signalsDetected: string[];
-      missingSignals: string[];
-      rationale: string;
-    };
-  };
-}
-
 const defaultJobDescription =
   "Senior software engineer role focused on backend systems, scalable APIs, cross-functional collaboration, system design, and ownership of critical product initiatives.";
 
@@ -56,19 +43,20 @@ export default function HomePage() {
   const [role, setRole] = useState("Senior Software Engineer");
   const [jobDescription, setJobDescription] = useState(defaultJobDescription);
   const [candidateFocus, setCandidateFocus] = useState(
-    "I want harder follow-ups on ownership and system design."
+    "I want to focus on DSA, dynamic programming, trees and greedy approach."
   );
-  const [mode, setMode] = useState<InterviewMode>("mixed");
-  const [answer, setAnswer] = useState("");
+  const [mode, setMode] = useState<InterviewMode>("technical");
   const [startData, setStartData] = useState<StartResponse | null>(null);
-  const [decision, setDecision] = useState<DecisionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<
     "idle" | "connecting" | "connected" | "error"
   >("idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [aiTranscript, setAiTranscript] = useState("");
+  const [userSpeaking, setUserSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const voiceConnRef = useRef<{ disconnect: () => void } | null>(null);
+  const transcriptRef = useRef("");
 
   function disconnectVoice() {
     voiceConnRef.current?.disconnect();
@@ -78,6 +66,9 @@ export default function HomePage() {
     }
     setVoiceStatus("idle");
     setVoiceError(null);
+    setAiTranscript("");
+    setUserSpeaking(false);
+    transcriptRef.current = "";
   }
 
   useEffect(() => {
@@ -86,14 +77,49 @@ export default function HomePage() {
     };
   }, []);
 
-  async function connectVoice() {
-    if (!startData) {
-      return;
+  function handleRealtimeEvent(event: RealtimeEvent) {
+    switch (event.type) {
+      case "response.audio_transcript.delta": {
+        const delta = event.delta as string | undefined;
+        if (delta) {
+          transcriptRef.current += delta;
+          setAiTranscript(transcriptRef.current);
+        }
+        break;
+      }
+      case "response.audio_transcript.done": {
+        const transcript = event.transcript as string | undefined;
+        if (transcript) {
+          transcriptRef.current = transcript;
+          setAiTranscript(transcript);
+        }
+        break;
+      }
+      case "response.done": {
+        transcriptRef.current = "";
+        break;
+      }
+      case "input_audio_buffer.speech_started": {
+        setUserSpeaking(true);
+        break;
+      }
+      case "input_audio_buffer.speech_stopped": {
+        setUserSpeaking(false);
+        break;
+      }
+      default:
+        break;
     }
+  }
+
+  async function connectVoice() {
+    if (!startData) return;
     setVoiceError(null);
     disconnectVoice();
-
     setVoiceStatus("connecting");
+    setAiTranscript("");
+    transcriptRef.current = "";
+
     try {
       const conn = await connectOpenAIRealtimeVoice({
         clientSecret: startData.realtime.clientSecret,
@@ -107,7 +133,8 @@ export default function HomePage() {
               );
             });
           }
-        }
+        },
+        onEvent: handleRealtimeEvent
       });
       voiceConnRef.current = conn;
       setVoiceStatus("connected");
@@ -119,63 +146,35 @@ export default function HomePage() {
 
   async function startInterview() {
     setLoading(true);
-    setDecision(null);
+    setStartData(null);
+    disconnectVoice();
 
     try {
       const response = await fetch("/api/interviews/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company,
-          role,
-          jobDescription,
-          candidateFocus,
-          mode
-        })
+        body: JSON.stringify({ company, role, jobDescription, candidateFocus, mode })
       });
 
       const data = (await response.json()) as StartResponse;
-      disconnectVoice();
       setStartData(data);
     } finally {
       setLoading(false);
     }
   }
 
-  async function evaluateTurn() {
-    if (!startData || !answer.trim()) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch("/api/interviews/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          interviewId: startData.interviewId,
-          answer
-        })
-      });
-
-      const data = (await response.json()) as DecisionResponse;
-      setDecision(data);
-      setAnswer("");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const missingKey =
+    startData?.realtime.clientSecret === "missing-openai-api-key" ||
+    !startData?.realtime.clientSecret?.trim();
 
   return (
     <main className="page">
       <section className="hero">
-        <p className="muted">Realtime Interview Runtime Scaffold</p>
-        <h1>Voice interviewer first, silent evaluator behind it.</h1>
+        <p className="muted">AI Mock Interviewer</p>
+        <h1>Prep Agent</h1>
         <p>
-          This app creates an interview plan and mints a short-lived realtime
-          session. Use <strong>Connect voice</strong> to open a WebRTC session to
-          OpenAI so the model can speak and hear your microphone.
+          Set up your interview, generate a question plan tailored to your focus
+          area, then connect your voice to start the session.
         </p>
       </section>
 
@@ -188,7 +187,7 @@ export default function HomePage() {
             <input
               id="company"
               value={company}
-              onChange={(event) => setCompany(event.target.value)}
+              onChange={(e) => setCompany(e.target.value)}
             />
           </div>
 
@@ -197,7 +196,7 @@ export default function HomePage() {
             <input
               id="role"
               value={role}
-              onChange={(event) => setRole(event.target.value)}
+              onChange={(e) => setRole(e.target.value)}
             />
           </div>
 
@@ -206,9 +205,7 @@ export default function HomePage() {
             <select
               id="mode"
               value={mode}
-              onChange={(event) =>
-                setMode(event.target.value as InterviewMode)
-              }
+              onChange={(e) => setMode(e.target.value as InterviewMode)}
             >
               {INTERVIEW_MODES.map((m) => (
                 <option key={m} value={m}>
@@ -223,7 +220,7 @@ export default function HomePage() {
             <textarea
               id="jobDescription"
               value={jobDescription}
-              onChange={(event) => setJobDescription(event.target.value)}
+              onChange={(e) => setJobDescription(e.target.value)}
             />
           </div>
 
@@ -232,65 +229,64 @@ export default function HomePage() {
             <textarea
               id="candidateFocus"
               value={candidateFocus}
-              onChange={(event) => setCandidateFocus(event.target.value)}
+              onChange={(e) => setCandidateFocus(e.target.value)}
+              placeholder="e.g. Focus on DSA, dynamic programming, trees and greedy. Harder follow-ups on edge cases."
             />
           </div>
 
           <div className="buttonRow">
             <button className="button" onClick={startInterview} disabled={loading}>
-              Start Session Scaffold
+              {loading ? "Generating plan…" : "Generate Interview Plan"}
             </button>
           </div>
         </div>
 
         <div className="panel">
-          <h2>Runtime Output</h2>
+          <h2>Voice Session</h2>
+
           {!startData ? (
             <p className="muted">
-              Start an interview to see the generated plan and realtime session
-              payload.
+              Generate an interview plan to unlock the voice session.
             </p>
           ) : (
-            <div className="metricList">
-              <div className="metric">
-                <strong>Interview ID</strong>
-                <span className="mono">{startData.interviewId}</span>
+            <>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>Questions ({startData.plan.questions.length})</label>
+                <div className="questionList">
+                  {startData.plan.questions.map((q, i) => (
+                    <div key={q.id} className="questionItem">
+                      <span className="questionNumber">Q{i + 1}</span>
+                      <div>
+                        <span className="questionTag">{q.competency.replace(/_/g, " ")}</span>
+                        <p className="questionPrompt">{q.prompt}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="metric">
-                <strong>Plan Summary</strong>
-                <span>{startData.plan.summary}</span>
-              </div>
-              <div className="metric">
-                <strong>First Question</strong>
-                <span>{startData.firstQuestion.prompt}</span>
-              </div>
-              <div className="metric">
-                <strong>Realtime Session</strong>
-                <span className="mono">
-                  model={startData.realtime.model} voice={startData.realtime.voice}
-                </span>
-              </div>
-              <div className="metric">
-                <strong>Voice (WebRTC)</strong>
-                <p className="muted" style={{ margin: "8px 0 12px" }}>
-                  Starting the scaffold only prepares the session. Connect here to
-                  enable microphone input and speaker output.
-                </p>
-                <audio
-                  ref={audioRef}
-                  autoPlay
-                  playsInline
-                  className="srOnly"
-                  aria-hidden
-                />
-                <div className="buttonRow" style={{ flexWrap: "wrap", gap: 8 }}>
+
+              <audio ref={audioRef} autoPlay playsInline className="srOnly" aria-hidden />
+
+              <div className="voiceBlock">
+                {voiceStatus === "connected" && (
+                  <div className="transcriptBox">
+                    <span className="transcriptLabel">
+                      {userSpeaking ? "🎙 You are speaking…" : "AI Interviewer"}
+                    </span>
+                    <p className="transcriptText">
+                      {aiTranscript || "Listening…"}
+                    </p>
+                  </div>
+                )}
+
+                <div className="voiceControls">
                   {voiceStatus === "connected" ? (
                     <button
                       type="button"
                       className="button secondary"
                       onClick={disconnectVoice}
                     >
-                      Disconnect voice
+                      End Session
                     </button>
                   ) : (
                     <button
@@ -300,93 +296,35 @@ export default function HomePage() {
                       disabled={
                         loading ||
                         voiceStatus === "connecting" ||
-                        startData.realtime.clientSecret ===
-                          "missing-openai-api-key" ||
-                        !startData.realtime.clientSecret?.trim()
+                        missingKey
                       }
                     >
-                      {voiceStatus === "connecting"
-                        ? "Connecting…"
-                        : "Connect voice"}
+                      {voiceStatus === "connecting" ? "Connecting…" : "Start Voice Interview"}
                     </button>
                   )}
-                  <span className="muted">
-                    Status: {voiceStatus}
-                    {startData.realtime.clientSecret ===
-                    "missing-openai-api-key"
-                      ? " · set OPENAI_API_KEY in .env.local"
-                      : null}
+
+                  <span className="voiceStatusBadge" data-status={voiceStatus}>
+                    {voiceStatus === "connected"
+                      ? "● Live"
+                      : voiceStatus === "connecting"
+                      ? "● Connecting"
+                      : voiceStatus === "error"
+                      ? "● Error"
+                      : "○ Ready"}
                   </span>
+
+                  {missingKey && (
+                    <span className="muted" style={{ fontSize: 13 }}>
+                      Set OPENAI_API_KEY in .env.local to enable voice.
+                    </span>
+                  )}
                 </div>
-                {voiceError ? (
-                  <p className="muted" style={{ color: "var(--warn, #c96)", marginTop: 8 }}>
-                    {voiceError}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
 
-      <section className="grid" style={{ marginTop: 20 }}>
-        <div className="panel">
-          <h3>Evaluate a Turn</h3>
-          <div className="field">
-            <label htmlFor="answer">Candidate Answer</label>
-            <textarea
-              id="answer"
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              placeholder="Paste a transcript chunk or a mock answer here."
-            />
-          </div>
-
-          <div className="buttonRow">
-            <button
-              className="button secondary"
-              onClick={evaluateTurn}
-              disabled={loading || !startData}
-            >
-              Evaluate and Pick Next Prompt
-            </button>
-          </div>
-        </div>
-
-        <div className="panel">
-          <h3>Evaluator / Orchestrator</h3>
-          {!decision ? (
-            <p className="muted">
-              Submit an answer to see the evaluator score it and decide on the
-              next interviewer action.
-            </p>
-          ) : (
-            <div className="eventList">
-              <div className="event">
-                <strong>Decision</strong>
-                <span>{decision.decision.action}</span>
+                {voiceError && (
+                  <p className="voiceError">{voiceError}</p>
+                )}
               </div>
-              <div className="event">
-                <strong>Next Prompt</strong>
-                <span>{decision.decision.prompt}</span>
-              </div>
-              <div className="event">
-                <strong>Answer Quality</strong>
-                <span>{decision.decision.evaluation.answerQuality}</span>
-              </div>
-              <div className="event">
-                <strong>Signals Detected</strong>
-                <span>{decision.decision.evaluation.signalsDetected.join(", ") || "None"}</span>
-              </div>
-              <div className="event">
-                <strong>Missing Signals</strong>
-                <span>{decision.decision.evaluation.missingSignals.join(", ") || "None"}</span>
-              </div>
-              <div className="event">
-                <strong>Rationale</strong>
-                <span>{decision.decision.evaluation.rationale}</span>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </section>

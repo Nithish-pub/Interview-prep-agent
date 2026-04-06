@@ -26,11 +26,17 @@ export interface RealtimeVoiceConnection {
   disconnect: () => void;
 }
 
+export interface RealtimeEvent {
+  type: string;
+  [key: string]: unknown;
+}
+
 export async function connectOpenAIRealtimeVoice(options: {
   clientSecret: string;
   onRemoteStream: (stream: MediaStream) => void;
+  onEvent?: (event: RealtimeEvent) => void;
 }): Promise<RealtimeVoiceConnection> {
-  const { clientSecret, onRemoteStream } = options;
+  const { clientSecret, onRemoteStream, onEvent } = options;
 
   if (
     !clientSecret ||
@@ -64,7 +70,18 @@ export async function connectOpenAIRealtimeVoice(options: {
     pc.addTrack(micTrack, mic);
   }
 
-  pc.createDataChannel("oai-events");
+  const dc = pc.createDataChannel("oai-events");
+
+  if (onEvent) {
+    dc.addEventListener("message", (e: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(e.data as string) as RealtimeEvent;
+        onEvent(parsed);
+      } catch {
+        // ignore malformed events
+      }
+    });
+  }
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
