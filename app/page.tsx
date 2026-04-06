@@ -8,6 +8,8 @@ import {
   connectOpenAIRealtimeVoice,
   RealtimeEvent
 } from "@/lib/realtime-webrtc-client";
+import DesignCanvas from "@/app/components/DesignCanvas";
+import CodeWorkspace from "@/app/components/CodeWorkspace";
 
 const INTERVIEW_MODES: InterviewMode[] = ["behavioral", "technical", "mixed"];
 
@@ -210,6 +212,7 @@ export default function HomePage() {
         </header>
 
         <main className="callMain">
+          <div className="callLeft">
           <div className="questionCard">
             <div className="questionCardHeader">
               <span className="qBadge">Question {currentQIndex + 1} of {total}</span>
@@ -287,7 +290,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="voicePanel">
+          {currentQ.isDsa ? (
+            <CodeWorkspace key={currentQ.id} />
+          ) : (
+            <DesignCanvas key={currentQ.id} />
+          )}
+        </div>
+
+        <div className="voicePanel">
             {voiceStatus === "connected" && (
               <div className="transcriptBox">
                 <span className="transcriptLabel">
