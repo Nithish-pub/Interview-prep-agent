@@ -183,6 +183,334 @@ select {
   font-size: 0.9rem;
 }
 
+/* ── Interview Call Screen ── */
+
+.callScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at top left, rgba(215, 111, 48, 0.12), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(12, 108, 91, 0.12), transparent 30%),
+    var(--bg);
+}
+
+.callHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 252, 244, 0.9);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.callHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.callLogo {
+  font-weight: bold;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.callMeta {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.callHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.progressDots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.2s;
+}
+
+.dot.active {
+  background: var(--accent);
+  width: 10px;
+  height: 10px;
+}
+
+.dot.done {
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+.endBtn {
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+
+.callMain {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  padding: 32px 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.questionCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 18px 40px rgba(55, 40, 16, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.questionCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.qBadge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: rgba(0,0,0,0.05);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.qTag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(12, 108, 91, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.qPromptText {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.dsaDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.dsaSection h4 {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+.dsaSection p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.dsaExample {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.dsaExample:last-child {
+  margin-bottom: 0;
+}
+
+.exampleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.exLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  min-width: 48px;
+  padding-top: 2px;
+}
+
+.exampleRow code {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: transparent;
+}
+
+.exNote {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.constraintList {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.constraintList li {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.constraintList code {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.83rem;
+}
+
+.followUpSection {
+  background: rgba(12, 108, 91, 0.05);
+  border: 1px solid rgba(12, 108, 91, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.followUpSection p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.qNav {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.qNav .button {
+  font-size: 0.9rem;
+  padding: 10px 18px;
+}
+
+.voicePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 90px;
+  align-self: flex-start;
+}
+
+.micBtn {
+  font-size: 1rem;
+  padding: 14px 24px;
+  width: 100%;
+}
+
+/* ── Setup screen extras ── */
+
+.setupInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.howList {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  counter-reset: steps;
+}
+
+.howList li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 36px;
+  position: relative;
+  counter-increment: steps;
+}
+
+.howList li::before {
+  content: counter(steps);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+}
+
+.howList li strong {
+  font-size: 0.95rem;
+}
+
+.howList li span {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .callMain {
+    grid-template-columns: 1fr;
+    padding: 20px 16px;
+  }
+
+  .voicePanel {
+    position: static;
+  }
+}
+
+/* ── Old question list styles (kept for reference) ── */
 .questionList {
   display: grid;
   gap: 10px;

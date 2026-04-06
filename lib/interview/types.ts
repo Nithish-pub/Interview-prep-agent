@@ -12,10 +12,25 @@ export interface InterviewInput {
   mode: InterviewMode;
 }
 
+export interface DsaExample {
+  input: string;
+  output: string;
+  explanation?: string;
+}
+
+export interface QuestionDetails {
+  description: string;
+  examples: DsaExample[];
+  constraints: string[];
+  followUpHint?: string;
+}
+
 export interface InterviewQuestion {
   id: string;
   competency: string;
   prompt: string;
+  isDsa?: boolean;
+  details?: QuestionDetails;
 }
 
 export interface InterviewPlan {
