@@ -1,12 +1,32 @@
-:root {
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --bg: #f5efe2;
   --panel: rgba(255, 252, 244, 0.88);
+  --field-bg: rgba(255, 255, 255, 0.78);
   --text: #1e1f1b;
   --muted: #5f6057;
   --line: #d5ccb8;
   --accent: #0c6c5b;
   --accent-2: #d76f30;
+  --shadow: rgba(55, 40, 16, 0.07);
+  --callHeader-bg: rgba(255, 252, 244, 0.9);
+  --metric-bg: rgba(255, 255, 255, 0.62);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121210;
+  --panel: rgba(28, 27, 24, 0.92);
+  --field-bg: rgba(40, 39, 35, 0.9);
+  --text: #e8e3d6;
+  --muted: #8a8478;
+  --line: #2e2c27;
+  --accent: #3ecfad;
+  --accent-2: #f09050;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --callHeader-bg: rgba(18, 18, 16, 0.92);
+  --metric-bg: rgba(40, 39, 35, 0.7);
 }
 
 * {
@@ -63,6 +83,33 @@ select {
   margin-bottom: 28px;
 }
 
+.heroTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.themeToggle {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.themeToggle:hover {
+  background: var(--field-bg);
+  border-color: var(--accent);
+}
+
 .hero h1 {
   margin: 0;
   max-width: 780px;
@@ -91,7 +138,7 @@ select {
   backdrop-filter: blur(14px);
   border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 18px 40px rgba(55, 40, 16, 0.07);
+  box-shadow: 0 18px 40px var(--shadow);
 }
 
 .panel h2,
@@ -116,7 +163,8 @@ select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--field-bg);
+  color: var(--text);
   padding: 12px 14px;
 }
 
@@ -164,7 +212,7 @@ select {
 .event {
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--metric-bg);
   padding: 14px;
 }
 
@@ -201,7 +249,7 @@ select {
   justify-content: space-between;
   padding: 16px 28px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 252, 244, 0.9);
+  background: var(--callHeader-bg);
   backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
@@ -285,7 +333,7 @@ select {
   border: 1px solid var(--line);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: 0 18px 40px rgba(55, 40, 16, 0.07);
+  box-shadow: 0 18px 40px var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -304,7 +352,8 @@ select {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  background: rgba(0,0,0,0.05);
+  background: var(--field-bg);
+  border: 1px solid var(--line);
   padding: 4px 10px;
   border-radius: 999px;
 }
@@ -352,7 +401,7 @@ select {
 }
 
 .dsaExample {
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--field-bg);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px 14px;
@@ -705,7 +754,7 @@ select {
   gap: 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--metric-bg);
   padding: 12px 14px;
   align-items: flex-start;
 }
@@ -743,7 +792,7 @@ select {
 .transcriptBox {
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--field-bg);
   padding: 14px 16px;
   min-height: 80px;
 }

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { InterviewMode } from "@/lib/interview/types";
-import type { DsaExample, QuestionDetails } from "@/lib/interview/types";
 import {
   connectOpenAIRealtimeVoice,
   RealtimeEvent
@@ -17,8 +16,6 @@ interface Question {
   id: string;
   competency: string;
   prompt: string;
-  isDsa?: boolean;
-  details?: QuestionDetails;
 }
 
 interface StartResponse {
@@ -42,11 +39,12 @@ const defaultJobDescription =
 
 export default function HomePage() {
   const [view, setView] = useState<"setup" | "interview">("setup");
+  const [darkMode, setDarkMode] = useState(false);
   const [company, setCompany] = useState("Amazon");
   const [role, setRole] = useState("Software Dev Engineer");
   const [jobDescription, setJobDescription] = useState(defaultJobDescription);
   const [candidateFocus, setCandidateFocus] = useState(
-    "I want to focus on DSA, dynamic programming, trees and greedy approach."
+    "Focus on system design, backend API design, and ownership of critical initiatives."
   );
   const [mode, setMode] = useState<InterviewMode>("technical");
   const [startData, setStartData] = useState<StartResponse | null>(null);
@@ -75,6 +73,10 @@ export default function HomePage() {
   useEffect(() => {
     return () => { voiceConnRef.current?.disconnect(); };
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
 
   function handleRealtimeEvent(event: RealtimeEvent) {
     switch (event.type) {
@@ -205,6 +207,9 @@ export default function HomePage() {
                 />
               ))}
             </div>
+            <button className="themeToggle" onClick={() => setDarkMode((d) => !d)} title="Toggle dark mode">
+              {darkMode ? "☀" : "☾"}
+            </button>
             <button className="button secondary endBtn" onClick={endInterview}>
               End Interview
             </button>
@@ -220,57 +225,6 @@ export default function HomePage() {
             </div>
 
             <p className="qPromptText">{currentQ.prompt}</p>
-
-            {currentQ.isDsa && currentQ.details && (
-              <div className="dsaDetails">
-                <div className="dsaSection">
-                  <h4>Problem</h4>
-                  <p>{currentQ.details.description}</p>
-                </div>
-
-                {currentQ.details.examples.length > 0 && (
-                  <div className="dsaSection">
-                    <h4>Examples</h4>
-                    {currentQ.details.examples.map((ex: DsaExample, i: number) => (
-                      <div key={i} className="dsaExample">
-                        <div className="exampleRow">
-                          <span className="exLabel">Input</span>
-                          <code>{ex.input}</code>
-                        </div>
-                        <div className="exampleRow">
-                          <span className="exLabel">Output</span>
-                          <code>{ex.output}</code>
-                        </div>
-                        {ex.explanation && (
-                          <div className="exampleRow">
-                            <span className="exLabel">Note</span>
-                            <span className="exNote">{ex.explanation}</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {currentQ.details.constraints.length > 0 && (
-                  <div className="dsaSection">
-                    <h4>Constraints</h4>
-                    <ul className="constraintList">
-                      {currentQ.details.constraints.map((c: string, i: number) => (
-                        <li key={i}><code>{c}</code></li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {currentQ.details.followUpHint && (
-                  <div className="dsaSection followUpSection">
-                    <h4>Possible Follow-up</h4>
-                    <p>{currentQ.details.followUpHint}</p>
-                  </div>
-                )}
-              </div>
-            )}
 
             <div className="qNav">
               <button
@@ -290,11 +244,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {currentQ.isDsa ? (
-            <CodeWorkspace key={currentQ.id} />
-          ) : (
+          {["system_design", "backend_design", "data_modeling"].includes(currentQ.competency) ? (
             <DesignCanvas key={currentQ.id} />
-          )}
+          ) : ["technical_depth", "debugging", "performance"].includes(currentQ.competency) ? (
+            <CodeWorkspace key={currentQ.id} />
+          ) : null}
         </div>
 
         <div className="voicePanel">
@@ -350,7 +304,12 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="hero">
-        <p className="muted">AI Mock Interviewer</p>
+        <div className="heroTop">
+          <p className="muted">AI Mock Interviewer</p>
+          <button className="themeToggle" onClick={() => setDarkMode((d) => !d)} title="Toggle dark mode">
+            {darkMode ? "☀" : "☾"}
+          </button>
+        </div>
         <h1>Prep Agent</h1>
         <p>
           Fill in your details and focus area, then generate a tailored interview
@@ -396,7 +355,7 @@ export default function HomePage() {
               id="candidateFocus"
               value={candidateFocus}
               onChange={(e) => setCandidateFocus(e.target.value)}
-              placeholder="e.g. Focus on DSA, dynamic programming, trees and greedy. Harder follow-ups on edge cases."
+              placeholder="e.g. Focus on system design, API design, ownership, and leadership. Push harder on tradeoffs."
             />
           </div>
 
@@ -412,15 +371,15 @@ export default function HomePage() {
           <ol className="howList">
             <li>
               <strong>Set your focus</strong>
-              <span>Tell us the company, role, and what topics you want to be tested on — DSA, system design, behavioral, or a mix.</span>
+              <span>Tell us the company, role, and what areas you want to be tested on — system design, behavioral, technical depth, or a mix.</span>
             </li>
             <li>
               <strong>Generate a plan</strong>
-              <span>We build a set of targeted questions based on your focus. DSA questions come with examples, constraints, and follow-up hints.</span>
+              <span>We build a set of targeted, role-specific questions. System design questions come with a live canvas; technical questions come with a code editor.</span>
             </li>
             <li>
               <strong>Enter the interview</strong>
-              <span>You'll see one question at a time. Join voice to talk with Alex, your AI interviewer. Alex will probe, follow up, and move on when you're ready.</span>
+              <span>One question at a time. Join voice to talk with Alex, your AI interviewer. Alex probes, follows up, and moves on when you're ready.</span>
             </li>
           </ol>
         </div>
