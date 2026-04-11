@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const evaluation = evaluateAnswer(question, payload.answer);
+  const evaluation = await evaluateAnswer(question, payload.answer, interview.input.difficulty);
   const decision = decideNextTurn(interview.plan, interview.state, evaluation);
 
   updateInterviewState(payload.interviewId, decision.updatedState);

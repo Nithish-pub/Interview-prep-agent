@@ -3,24 +3,32 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "ulimit -n 65536 2>/dev/null || true; WATCHPACK_POLLING=true next dev -p 5000",
+    "dev": "ulimit -n 65536 2>/dev/null || true; WATCHPACK_POLLING=true next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.39",
+    "@langchain/openai": "^1.4.4",
+    "@tavily/core": "^0.7.2",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "tldraw": "^4.5.7",
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "20.14.10",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "autoprefixer": "^10.4.27",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.5",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.19",
     "typescript": "5.5.3"
   }
 }

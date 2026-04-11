@@ -1,106 +1,127 @@
-import {
-  EvaluationResult,
-  InterviewQuestion
-} from "@/lib/interview/types";
+import { ChatOpenAI } from "@langchain/openai";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { z } from "zod";
+import { DifficultyLevel, EvaluationResult, InterviewQuestion } from "@/lib/interview/types";
 
-const fillerPatterns = [
-  "kind of",
-  "sort of",
-  "maybe",
-  "i think",
-  "basically"
-];
+// ── LangChain LCEL chain (built once, reused per call) ──────────────────────
 
-const metricPattern = /\b\d+[%xkmb]?\b/i;
+const model = new ChatOpenAI({
+  model: "gpt-4o-mini",
+  temperature: 0,
+  openAIApiKey: process.env.OPENAI_API_KEY,
+});
 
-function detectSignals(answer: string) {
-  const lower = answer.toLowerCase();
-  const signals: string[] = [];
-  const missing: string[] = [];
+const evaluationSchema = z.object({
+  answerQuality: z.enum(["low", "medium", "high"]).describe(
+    "Overall quality of the candidate's answer"
+  ),
+  signalsDetected: z.array(z.string()).describe(
+    "Positive signals present in the answer, e.g. 'quantified impact: 40% latency reduction', 'clear ownership using first-person', 'STAR structure followed'"
+  ),
+  missingSignals: z.array(z.string()).describe(
+    "Key things absent from the answer, e.g. 'no outcome stated', 'uses we/team — no individual ownership', 'no concrete metrics'"
+  ),
+  followUpNeeded: z.boolean().describe(
+    "True if the answer is weak or missing critical signals and a follow-up should be asked"
+  ),
+  suggestedFollowUp: z.string().nullable().describe(
+    "A specific, contextual follow-up question targeting the biggest gap in this answer. Must reference what the candidate actually said. Null if followUpNeeded is false."
+  ),
+  rationale: z.string().describe(
+    "1-2 sentences explaining the score, referencing specifics from the answer"
+  ),
+});
 
-  if (answer.length > 180) {
-    signals.push("sufficient_detail");
-  } else {
-    missing.push("detail");
-  }
+const structuredModel = model.withStructuredOutput(evaluationSchema);
 
-  if (metricPattern.test(answer)) {
-    signals.push("uses_metrics");
-  } else {
-    missing.push("metrics");
-  }
+const prompt = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    `You are a strict, experienced technical interview evaluator.
+Your job is to assess the quality of a candidate's answer to an interview question.
 
-  if (/\b(i|my|me)\b/i.test(answer)) {
-    signals.push("ownership_language");
-  } else {
-    missing.push("ownership");
-  }
+Evaluate along these dimensions:
+- **Depth**: Does the answer go beyond surface-level? Does it show genuine understanding?
+- **Specificity**: Are there concrete examples, numbers, names of tools/systems?
+- **Ownership**: Does the candidate speak in first person and show personal contribution vs vague "we did"?
+- **Outcome/Impact**: Is there a clear result? Was it measured?
+- **Relevance**: Does the answer actually address the competency being tested?
 
-  if (/\b(result|outcome|impact|improved|reduced|increased)\b/i.test(lower)) {
-    signals.push("outcome_clarity");
-  } else {
-    missing.push("outcome");
-  }
+Be demanding but fair. Match your bar to the difficulty level provided.
+- easy: accept reasonable, clear answers without deep depth
+- medium: require specifics and some evidence of impact
+- hard: require depth, tradeoffs, concrete metrics, and real ownership
 
-  if (fillerPatterns.some((pattern) => lower.includes(pattern))) {
-    missing.push("precision");
-  }
+Never invent signals. Only report what is actually present or absent in the answer.`,
+  ],
+  [
+    "user",
+    `Competency: {competency}
+Question Type: {questionType}
+Difficulty: {difficulty}
 
-  return { signals, missing };
+Question:
+{question}
+
+Candidate's Answer:
+{answer}`,
+  ],
+]);
+
+const chain = prompt.pipe(structuredModel);
+
+// ── Helper: derive question type from metadata ───────────────────────────────
+
+function deriveQuestionType(question: InterviewQuestion): string {
+  if (question.isDsa) return "coding / algorithm";
+  if (question.competency.toLowerCase().includes("design")) return "system design";
+  return "behavioral";
 }
 
-function scoreAnswer(answer: string, missingSignals: string[]) {
-  if (answer.length < 80 || missingSignals.length >= 3) {
-    return "low" as const;
-  }
+// ── Fallback for when the LLM call fails ─────────────────────────────────────
 
-  if (answer.length > 240 && missingSignals.length <= 1) {
-    return "high" as const;
-  }
-
-  return "medium" as const;
-}
-
-function buildFollowUp(question: InterviewQuestion, missingSignals: string[]) {
-  if (missingSignals.includes("metrics")) {
-    return "Quantify the outcome. What changed in measurable terms because of your work?";
-  }
-
-  if (missingSignals.includes("ownership")) {
-    return "Be specific about your part. What exactly did you decide or execute yourself?";
-  }
-
-  if (missingSignals.includes("outcome")) {
-    return `Close the loop on ${question.competency}. What was the end result, and how did you know your approach worked?`;
-  }
-
-  if (missingSignals.includes("detail")) {
-    return `Go one level deeper on ${question.competency}. What was the hardest moment and how did you handle it?`;
-  }
-
-  return null;
-}
-
-export function evaluateAnswer(
-  question: InterviewQuestion,
-  answer: string
-): EvaluationResult {
-  const { signals, missing } = detectSignals(answer);
-  const answerQuality = scoreAnswer(answer, missing);
-  const suggestedFollowUp = buildFollowUp(question, missing);
-
+function safeFallback(question: InterviewQuestion): EvaluationResult {
   return {
     questionId: question.id,
     competency: question.competency,
-    answerQuality,
-    signalsDetected: signals,
-    missingSignals: missing,
-    followUpNeeded: answerQuality !== "high" && suggestedFollowUp !== null,
-    followUpType: suggestedFollowUp ? "follow_up" : "move_on",
-    suggestedFollowUp,
-    rationale:
-      answerQuality === "high"
-        ? "The response included concrete ownership and enough signal to move forward."
-        : "The response is missing at least one signal needed for a strong interview answer."
+    answerQuality: "medium",
+    signalsDetected: [],
+    missingSignals: [],
+    followUpNeeded: false,
+    followUpType: "move_on",
+    suggestedFollowUp: null,
+    rationale: "Evaluation unavailable — proceeding to next question.",
   };
+}
+
+// ── Public export ─────────────────────────────────────────────────────────────
+
+export async function evaluateAnswer(
+  question: InterviewQuestion,
+  answer: string,
+  difficulty: DifficultyLevel
+): Promise<EvaluationResult> {
+  try {
+    const raw = await chain.invoke({
+      competency: question.competency,
+      questionType: deriveQuestionType(question),
+      difficulty,
+      question: question.prompt,
+      answer,
+    });
+
+    return {
+      questionId: question.id,
+      competency: question.competency,
+      answerQuality: raw.answerQuality,
+      signalsDetected: raw.signalsDetected,
+      missingSignals: raw.missingSignals,
+      followUpNeeded: raw.followUpNeeded,
+      followUpType: raw.followUpNeeded ? "follow_up" : "move_on",
+      suggestedFollowUp: raw.suggestedFollowUp,
+      rationale: raw.rationale,
+    };
+  } catch {
+    return safeFallback(question);
+  }
 }
